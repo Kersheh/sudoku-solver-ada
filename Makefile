@@ -2,11 +2,21 @@
 
 CC = gcc
 GNAT = gnatmake
-CFLAGS = -c
+
+DIRS = boards
+FILES = $(wildcard $(DIRS:=/*.txt))
 
 build:
-	$(CC) $(CFLAGS) sudoku.adb
-	$(GNAT) sudoku.adb
+	$(CC) -c sudoku.adb
+	$(GNAT) -Wall sudoku.adb
+
+test1:
+	./sudoku boards/board1.txt
+
+test:
+	@for file in $(FILES) ; do \
+		./sudoku $$file ; \
+	done
 
 clean:
 	rm -f sudoku *.ali *.o
