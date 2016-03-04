@@ -2,18 +2,19 @@ with Ada.Command_Line; use Ada.Command_Line;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Integer_Text_IO; use Ada.Integer_Text_IO;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with stack; use stack;
 
 procedure Sudoku is
   args: constant integer := argument_count;
-  type sudoku is array(integer range 1 .. 9, integer range 1 .. 9) of integer;
-  current_board: sudoku;
+  --type sudoku is array(integer range 1 .. 9, integer range 1 .. 9) of integer;
+  current_board: sudoku_board;
 
   -- function to import board from file
-  function load_board(file_in: string) return sudoku is
+  function load_board(file_in: string) return sudoku_board is
     input: file_type;
     i, j: integer := 1;
     read_in: integer;
-    board: sudoku;
+    board: sudoku_board;
   begin
     open(file => input, mode => in_file, name => file_in);
     while not end_of_file(input) loop
@@ -32,7 +33,7 @@ procedure Sudoku is
   end load_board;
 
   -- procedure to print board
-  procedure print_sudoku(board: in sudoku) is
+  procedure print_sudoku(board: in sudoku_board) is
   begin
     put_line("+-----+-----+-----+");
     for i in integer range 1 .. 9 loop
@@ -53,7 +54,7 @@ procedure Sudoku is
   end print_sudoku;
 
   -- procedure to output board to file
-  procedure output_sudoku(file_out: in string; board: in sudoku) is
+  procedure output_sudoku(file_out: in string; board: in sudoku_board) is
     output: file_type;
   begin
     create(file => output, mode => out_file, name => file_out & ".txt");
@@ -76,7 +77,7 @@ procedure Sudoku is
   end output_sudoku;
 
   -- boolean function checks for blank squares throughout puzzle
-  function is_blank_squares(board: sudoku) return boolean is
+  function is_blank_squares(board: sudoku_board) return boolean is
   begin
     for i in integer range 1 .. 9 loop
       for j in integer range 1 .. 9 loop
@@ -89,7 +90,7 @@ procedure Sudoku is
   end is_blank_squares;
 
   -- boolean function checks if value is in current row
-  function in_row(num: integer; row: integer; board: sudoku) return boolean is
+  function in_row(num: integer; row: integer; board: sudoku_board) return boolean is
   begin
     for i in integer range 1 .. 9 loop
       if board(row, i) = num then
@@ -100,7 +101,7 @@ procedure Sudoku is
   end in_row;
 
   -- boolean function checks if value is in current column
-  function in_column(num: integer; column: integer; board: sudoku) return boolean is
+  function in_column(num: integer; column: integer; board: sudoku_board) return boolean is
   begin
     for i in integer range 1 .. 9 loop
       if board(i, column) = num then
@@ -111,7 +112,7 @@ procedure Sudoku is
   end in_column;
 
   -- boolean function checks if value is in 9x9 square
-  function in_square(num: integer; row: integer; column: integer; board: sudoku) return boolean is
+  function in_square(num: integer; row: integer; column: integer; board: sudoku_board) return boolean is
     x_min, x_max, y_min, y_max: integer;
   begin
     -- retrieve subsquare range
@@ -124,7 +125,7 @@ procedure Sudoku is
     end if;
     if column < 4 then
       y_min := 1; y_max := 3;
-    elsif row < 7 then
+    elsif column < 7 then
       y_min := 4; y_max := 6;
     else
       y_min := 7; y_max := 9;
@@ -140,7 +141,7 @@ procedure Sudoku is
   end in_square;
 
   -- boolean function checks if value is legal in cell
-  function is_legal(num: integer; x: integer; y: integer; board: sudoku) return boolean is
+  function is_legal(num: integer; x: integer; y: integer; board: sudoku_board) return boolean is
   begin
     -- return false if value is not 0
     if board(x, y) /= 0 then
@@ -152,9 +153,58 @@ procedure Sudoku is
     return false;
   end is_legal;
 
-  -- recursive function attempts to solve sudoku board
-  function solve_sudoku(board: in out sudoku) return boolean is
+  -- function solves cell if only one number if possible
+  function solve_single_cell(x: integer; y: integer; board: sudoku_board) return integer is
+    answer_found: boolean := false;
+    answer: integer;
   begin
+    -- return cell value if already filled
+    if board(x, y) /= 0 then
+      return board(x, y);
+    end if;
+    for i in integer range 1 .. 9 loop
+      if is_legal(i, x, y, board) then
+        -- if answer found for cell, more than one answer if valid; return 0
+        if answer_found then
+          return 0;
+        end if;
+        answer_found := true;
+        answer := i;
+      end if;
+    end loop;
+    -- return answer; return 0 if no answer found
+    if answer_found then
+      return answer;
+    end if;
+    return 0;
+  end solve_single_cell;
+
+  -- function solves immediate solvable cells; returns false if no changes made
+  function solve_cells(board: in out sudoku_board) return boolean is
+    changes_made: boolean := false;
+  begin
+    for i in integer range 1 .. 9 loop
+      for j in integer range 1 .. 9 loop
+        if board(i, j) = 0 then
+          board(i, j) := solve_single_cell(i, j, board);
+          if board(i, j) /= 0 then
+            changes_made := true;
+          end if;
+        end if;
+      end loop;
+    end loop;
+    print_sudoku(board);
+    return changes_made;
+  end solve_cells;
+
+  -- recursive function attempts to solve sudoku board
+  function solve_sudoku(board: in out sudoku_board) return boolean is
+    pop_board: sudoku_board;
+  begin
+    -- loop through solving immediate solvable cells
+    while solve_cells(board) loop
+      null;
+    end loop;
     return false;
   end solve_sudoku;
 
@@ -197,7 +247,7 @@ begin
     if not solve_sudoku(current_board) then
       put_line("Puzzle is impossible to solve.");
     else
-    -- print completed puzzle to stdin
+      -- print completed puzzle to stdin
       if output_option = 1 then
         put_line("Completed Puzzle:");
         print_sudoku(current_board);
