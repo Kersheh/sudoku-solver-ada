@@ -19,4 +19,4 @@ test:
 	done
 
 clean:
-	rm -f sudoku *.ali *.o
+	rm -f sudoku *.ali *.o *.txt
