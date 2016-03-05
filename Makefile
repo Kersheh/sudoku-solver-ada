@@ -13,7 +13,7 @@ build:
 test1:
 	./sudoku boards/board1.txt
 
-test:
+test_boards: boards
 	@for file in $(FILES) ; do \
 		./sudoku $$file ; \
 	done

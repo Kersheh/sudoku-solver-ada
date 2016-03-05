@@ -6,8 +6,6 @@ with stack; use stack;
 
 procedure Sudoku is
   args: constant integer := argument_count;
-  --type sudoku is array(integer range 1 .. 9, integer range 1 .. 9) of integer;
-  current_board: sudoku_board;
 
   -- function to import board from file
   function load_board(file_in: string) return sudoku_board is
@@ -77,11 +75,13 @@ procedure Sudoku is
   end output_sudoku;
 
   -- boolean function checks for blank squares throughout puzzle
-  function is_blank_squares(board: sudoku_board) return boolean is
+  function is_blank_squares(board: sudoku_board; x: in out integer; y: in out integer) return boolean is
   begin
     for i in integer range 1 .. 9 loop
       for j in integer range 1 .. 9 loop
         if board(i, j) = 0 then
+          x := i;
+          y := j;
           return true;
         end if;
       end loop;
@@ -193,17 +193,43 @@ procedure Sudoku is
         end if;
       end loop;
     end loop;
-    print_sudoku(board);
     return changes_made;
   end solve_cells;
 
+  -- function creates and returns an identical copy of a sudoku board
+  function copy_board(board: sudoku_board) return sudoku_board is
+    new_board: sudoku_board;
+  begin
+    for i in integer range 1 .. 9 loop
+      for j in integer range 1 .. 9 loop
+        new_board(i, j) := board(i, j);
+      end loop;
+    end loop;
+    return new_board;
+  end copy_board;
+
   -- recursive function attempts to solve sudoku board
-  function solve_sudoku(board: in out sudoku_board) return boolean is
-    pop_board: sudoku_board;
+  function solve_sudoku(x: in integer; y: in integer; board: in out sudoku_board) return boolean is
+    current_x: integer := x;
+    current_y: integer := y;
   begin
     -- loop through solving immediate solvable cells
     while solve_cells(board) loop
       null;
+    end loop;
+    -- check if puzzle is complete
+    if not is_blank_squares(board, current_x, current_y) then
+       return true;
+    end if;
+    stack.push(board); -- push current board state onto stack
+    for i in integer range 1 .. 9 loop
+      if is_legal(i, current_x, current_y, board) then
+        board(current_x, current_y) := i;
+        if solve_sudoku(current_x, current_y, board) then
+          return true;
+        end if;
+        stack.pop(board);
+      end if;
     end loop;
     return false;
   end solve_sudoku;
@@ -221,6 +247,7 @@ begin
     output_option: integer := -1;
     filename_out: string(1 .. 64);
     last: natural; -- tracks filename_out length
+    current_board: sudoku_board;
   begin
     -- load input file
     current_board := load_board(filename_in);
@@ -244,7 +271,7 @@ begin
       end if;
     end loop;
     -- solve sudoku
-    if not solve_sudoku(current_board) then
+    if not solve_sudoku(1, 1, current_board) then
       put_line("Puzzle is impossible to solve.");
     else
       -- print completed puzzle to stdin

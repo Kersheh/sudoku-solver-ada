@@ -2,31 +2,31 @@
 with Ada.Text_IO; use Ada.Text_IO;
 package body stack is
   empty: sudoku_board;
-
-  type list is array(1 .. 100) of sudoku_board;
+  
+  type list_boards is array(1 .. 4096) of sudoku_board;
   type sudoku_stack is
     record
-      item: list;
+      item: list_boards;
       top: natural := 0;
     end record;
   st: sudoku_stack;
 
-  procedure push(x: in sudoku_board) is
+  procedure push(board: in sudoku_board) is
   begin
-    if st.top = 100 then
+    if st.top = 4096 then
       put_line("stack is full");
     else
       st.top := st.top + 1;
-      st.item(st.top) := x;
+      st.item(st.top) := board;
     end if;
   end push;
 
-  procedure pop(x: out sudoku_board) is
+  procedure pop(board: out sudoku_board) is
   begin
     if st.top = 0 then
       put_line("stack is empty");
     else
-      x := st.item(st.top);
+      board := st.item(st.top);
       st.top := st.top - 1;
     end if;
   end pop;
