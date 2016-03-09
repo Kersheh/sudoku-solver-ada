@@ -74,19 +74,21 @@ procedure Sudoku is
     end loop;
   end output_sudoku;
 
-  -- boolean function checks for blank squares throughout puzzle
-  function is_blank_squares(board: sudoku_board; x: in out integer; y: in out integer) return boolean is
+  -- procedure checks for blank squares throughout puzzle setting x and y if 
+  -- blank square found; procedure sets boolean if blank found
+  procedure is_blank_squares(board: in sudoku_board; x: in out integer; y: in out integer; bool: out boolean) is
   begin
     for i in integer range 1 .. 9 loop
       for j in integer range 1 .. 9 loop
         if board(i, j) = 0 then
           x := i;
           y := j;
-          return true;
+          bool := true;
+          return;
         end if;
       end loop;
     end loop;
-    return false;
+    bool := false;
   end is_blank_squares;
 
   -- boolean function checks if value is in current row
@@ -180,9 +182,9 @@ procedure Sudoku is
   end solve_single_cell;
 
   -- function solves immediate solvable cells; returns false if no changes made
-  function solve_cells(board: in out sudoku_board) return boolean is
-    changes_made: boolean := false;
+  procedure solve_cells(board: in out sudoku_board; changes_made: out boolean) is
   begin
+    changes_made := false;
     for i in integer range 1 .. 9 loop
       for j in integer range 1 .. 9 loop
         if board(i, j) = 0 then
@@ -193,7 +195,6 @@ procedure Sudoku is
         end if;
       end loop;
     end loop;
-    return changes_made;
   end solve_cells;
 
   -- function creates and returns an identical copy of a sudoku board
@@ -209,29 +210,37 @@ procedure Sudoku is
   end copy_board;
 
   -- recursive function attempts to solve sudoku board
-  function solve_sudoku(x: in integer; y: in integer; board: in out sudoku_board) return boolean is
+  procedure solve_sudoku(x: in integer; y: in integer; board: in out sudoku_board; solved: out boolean) is
     current_x: integer := x;
     current_y: integer := y;
+    solve_cells_bool: boolean := true;
+    blank_bool: boolean := true;
+    solve_sudoku_bool: boolean := false;
   begin
     -- loop through solving immediate solvable cells
-    while solve_cells(board) loop
-      null;
+    while solve_cells_bool loop
+      solve_cells(board, solve_cells_bool);
     end loop;
     -- check if puzzle is complete
-    if not is_blank_squares(board, current_x, current_y) then
-       return true;
+    is_blank_squares(board, current_x, current_y, blank_bool);
+    if not blank_bool then
+       solved := true;
+       return;
     end if;
     stack.push(board); -- push current board state onto stack
     for i in integer range 1 .. 9 loop
       if is_legal(i, current_x, current_y, board) then
         board(current_x, current_y) := i;
-        if solve_sudoku(current_x, current_y, board) then
-          return true;
+        solve_sudoku(current_x, current_y, board, solve_sudoku_bool);
+        if solve_sudoku_bool then
+          solved := true;
+          return;
         end if;
         stack.pop(board);
       end if;
     end loop;
-    return false;
+    solved := false;
+    return;
   end solve_sudoku;
 
 -- main process
@@ -248,6 +257,7 @@ begin
     filename_out: string(1 .. 64);
     last: natural; -- tracks filename_out length
     current_board: sudoku_board;
+    solved: boolean;
   begin
     -- load input file
     current_board := load_board(filename_in);
@@ -271,7 +281,8 @@ begin
       end if;
     end loop;
     -- solve sudoku
-    if not solve_sudoku(1, 1, current_board) then
+    solve_sudoku(1, 1, current_board, solved);
+    if not solved then
       put_line("Puzzle is impossible to solve.");
     else
       -- print completed puzzle to stdin
